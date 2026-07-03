@@ -25,6 +25,37 @@
   }
   .screen{display:none; max-width:900px; margin:0 auto; padding:16px; }
   .screen.active{display:block;}
+
+  /* ===== 見やすさ設定（合理的配慮） ===== */
+  /* 文字を大きく */
+  body.tsize-large .q-word{font-size:3.4rem;}
+  body.tsize-large .q-roma{font-size:1.9rem;}
+  body.tsize-large .q-hint{font-size:1.3rem;}
+  body.tsize-large .gk .kana, body.tsize-large .gk.gk-kana .kana{font-size:1.3rem;}
+  /* 高コントラスト（白地に黒・青） */
+  body.theme-hc{--bg:#FFFFFF; --card:#FFFFFF; --ink:#000000; --sub:#333333;
+    --main:#0050D0; --accent:#C08000;}
+  body.theme-hc{background-image:none;}
+  /* 目にやさしいクリーム色背景 */
+  body.theme-cream{--bg:#FBF3E0; --card:#FFFDF7;}
+  body.theme-cream{background-image:none;}
+
+  /* かな＝ローマ字 対応表示 */
+  .pair{display:inline-flex; flex-direction:column; align-items:center; margin:0 4px; vertical-align:top;}
+  .pair .pk{font-size:1.3rem; font-weight:800;}
+  .pair .pr{font-size:1.1rem; font-family:"Consolas","Menlo",monospace; letter-spacing:.05em;}
+  .pair-done .pk,.pair-done .pr{color:var(--ok);}
+  .pair-now .pk,.pair-now .pr{color:var(--main); font-weight:900;}
+  .pair-rest .pk{color:var(--ink);} .pair-rest .pr{color:#9FB4CE;}
+
+  /* かんたんモードの1文字クリア演出 */
+  .mini-ok{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) scale(.4);
+    font-size:4rem; color:var(--ok); font-weight:900; opacity:0; pointer-events:none; z-index:4;}
+  .mini-ok.show{animation:mini-ok .5s ease-out;}
+  @keyframes mini-ok{0%{opacity:0; transform:translate(-50%,-50%) scale(.4);}
+    40%{opacity:.9; transform:translate(-50%,-50%) scale(1.1);}
+    100%{opacity:0; transform:translate(-50%,-50%) scale(1.3);}}
+
   h1{font-size:1.6rem; text-align:center; margin:10px 0 4px;}
   .sub-title{text-align:center; color:var(--sub); margin:0 0 16px; font-size:.95rem;}
 
@@ -296,6 +327,42 @@
       </div>
     </div>
     <div class="setting-row">
+      <div class="setting-label">にがてな もんだいを おおく だす</div>
+      <div class="seg" id="seg-review">
+        <button data-v="on">する</button>
+        <button data-v="off">しない</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">かな と ローマじの たいおう ひょうじ</div>
+      <div class="seg" id="seg-romapair">
+        <button data-v="on">みせる</button>
+        <button data-v="off">かくす</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">かんたんモード（1もじずつ ○）</div>
+      <div class="seg" id="seg-easy">
+        <button data-v="on">する</button>
+        <button data-v="off">しない</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">もじの おおきさ</div>
+      <div class="seg" id="seg-textsize">
+        <button data-v="normal">ふつう</button>
+        <button data-v="large">おおきい</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">がめんの いろ</div>
+      <div class="seg" id="seg-theme">
+        <button data-v="light">ふつう</button>
+        <button data-v="cream">クリーム</button>
+        <button data-v="hc">はっきり</button>
+      </div>
+    </div>
+    <div class="setting-row">
       <div class="setting-label">ジャンル</div>
       <select id="sel-genre-play" onchange="onGenreChange()"></select>
     </div>
@@ -326,6 +393,7 @@
     <div class="q-word" id="q-word"></div>
     <div class="q-roma" id="q-roma"></div>
     <div class="q-hint" id="q-hint"></div>
+    <div class="mini-ok" id="mini-ok">◯</div>
     <div class="flash-ok hidden" id="flash"></div>
   </div>
   <div class="kb" id="kb"></div>
@@ -343,6 +411,8 @@
       <span class="ng">ミス <span id="result-miss">0</span>かい</span>
     </div>
     <div id="result-stats" style="text-align:center; font-weight:700; color:var(--sub); margin:-6px 0 20px;"></div>
+    <div id="result-stickers" style="text-align:center; font-size:2rem; letter-spacing:6px; margin:6px 0;"></div>
+    <div id="result-sticker-msg" style="text-align:center; font-weight:700; margin:0 0 18px;"></div>
     <div class="home-buttons" style="margin:0 auto;">
       <button class="btn big green" onclick="retryGame()">🔁 もういちど</button>
       <button class="btn big" onclick="goHome()">🏠 ホームへ</button>
@@ -480,9 +550,12 @@ function defaultData(){
       {id:"p13",genreId:"g3",word:"けーき",kana:"けーき",emoji:"🍰",image:null},
       {id:"p14",genreId:"g3",word:"ぎゅうにゅう",kana:"ぎゅうにゅう",emoji:"🥛",image:null}
     ],
-    settings:{mode:"roma", count:5, timeLimit:0, genreId:"all", kanaKb:"table", buzz:"on", guide:"show", kbGuide:"show"},
+    settings:{mode:"roma", count:5, timeLimit:0, genreId:"all", kanaKb:"table", buzz:"on", guide:"show", kbGuide:"show",
+              review:"on", romaPair:"off", textSize:"normal", theme:"light", easy:"off"},
     students:[],
-    records:[]
+    records:[],
+    missCount:{},
+    stickers:0
   };
 }
 
@@ -497,8 +570,15 @@ function load(){
       if(!db.settings.buzz)   db.settings.buzz = "on";
       if(!db.settings.guide)  db.settings.guide = "show";
       if(!db.settings.kbGuide) db.settings.kbGuide = "show";
+      if(!db.settings.review) db.settings.review = "on";
+      if(!db.settings.romaPair) db.settings.romaPair = "off";
+      if(!db.settings.textSize) db.settings.textSize = "normal";
+      if(!db.settings.theme)  db.settings.theme = "light";
+      if(!db.settings.easy)   db.settings.easy = "off";
       if(!db.students) db.students = [];
       if(!db.records)  db.records = [];
+      if(!db.missCount) db.missCount = {};   // 問題ID→まちがえた回数
+      if(db.stickers == null) db.stickers = 0; // ためたシールの数
       return;
     }
   }catch(e){}
@@ -556,6 +636,10 @@ function soundBuzz(){ // ブー（長め）
 function soundKey(){ tone(880, .05, "sine", .08, 0); }                                       // ポッ
 function soundClear(){ tone(784, .12, "sine", .2, 0); tone(1175, .25, "sine", .2, .12); }    // ピンポン
 function soundTimeup(){ tone(220, .2, "square", .2, 0); tone(160, .35, "square", .2, .2); }  // 時間切れ
+function soundFanfare(){ // ごほうび達成のファンファーレ
+  tone(523,.12,"sine",.2,0); tone(659,.12,"sine",.2,.12);
+  tone(784,.12,"sine",.2,.24); tone(1047,.3,"sine",.22,.36);
+}
 
 /* =========================================================
    ローマ字エンジン（訓令式を基本表示・ヘボン式入力も正解）
@@ -689,11 +773,26 @@ class RomaMatcher {
     }
     return s;
   }
+  pairs(){ // [{kana:"み", roma:"mi", state:"done"|"now"|"rest"}, ...] を返す
+    const list = [];
+    for(let i=0; i<this.units.length; i++){
+      const u = this.units[i];
+      const nx = this.units[i+1];
+      let roma;
+      if(u.special === "sokuon"){
+        roma = (nx && !VOWELS.includes(nx.cands[0][0]) && nx.cands[0][0] !== "n")
+          ? nx.cands[0][0] : "xtu";
+      }else if(u.special === "n"){
+        roma = "nn";
+      }else{
+        roma = u.cands[0];
+      }
+      const state = i < this.ui ? "done" : (i === this.ui ? "now" : "rest");
+      list.push({kana: u.kana, roma, state});
+    }
+    return list;
+  }
 }
-
-/* =========================================================
-   ひらがなエンジン（画面キーボード用）
-========================================================= */
 const DAKU  = {"か":"が","き":"ぎ","く":"ぐ","け":"げ","こ":"ご","さ":"ざ","し":"じ","す":"ず","せ":"ぜ","そ":"ぞ","た":"だ","ち":"ぢ","つ":"づ","て":"で","と":"ど","は":"ば","ひ":"び","ふ":"ぶ","へ":"べ","ほ":"ぼ"};
 const HANDAKU = {"は":"ぱ","ひ":"ぴ","ふ":"ぷ","へ":"ぺ","ほ":"ぽ"};
 const SMALL = {"あ":"ぁ","い":"ぃ","う":"ぅ","え":"ぇ","お":"ぉ","つ":"っ","や":"ゃ","ゆ":"ゅ","よ":"ょ","わ":"ゎ"};
@@ -749,6 +848,11 @@ function renderSettings(){
   setSeg("seg-buzz",  db.settings.buzz,  v => { db.settings.buzz = v; save(); });
   setSeg("seg-guide", db.settings.guide, v => { db.settings.guide = v; save(); });
   setSeg("seg-kbguide", db.settings.kbGuide, v => { db.settings.kbGuide = v; save(); });
+  setSeg("seg-review", db.settings.review, v => { db.settings.review = v; save(); });
+  setSeg("seg-romapair", db.settings.romaPair, v => { db.settings.romaPair = v; save(); });
+  setSeg("seg-easy", db.settings.easy, v => { db.settings.easy = v; save(); });
+  setSeg("seg-textsize", db.settings.textSize, v => { db.settings.textSize = v; save(); applyAppearance(); });
+  setSeg("seg-theme", db.settings.theme, v => { db.settings.theme = v; save(); applyAppearance(); });
   fillGenreSelect(document.getElementById("sel-genre-play"), true);
   document.getElementById("sel-genre-play").value = db.settings.genreId;
 }
@@ -787,13 +891,32 @@ function pickProblems(){
     pool = pool.filter(p => p.genreId === db.settings.genreId);
     if(pool.length === 0) pool = db.problems; // ジャンルが空なら全体から
   }
+  const n = db.settings.count;
+  const take = (n === 0 || n >= pool.length) ? pool.length : n;
+
+  if(db.settings.review === "on"){
+    // 苦手復習ON：まちがえた回数が多い問題ほど当たりやすくする（重み付き抽選）
+    const remain = [...pool];
+    const picked = [];
+    while(picked.length < take && remain.length > 0){
+      // 重み = まちがえた回数 + 1（1回も間違えていない問題も必ず出る余地を残す）
+      const weights = remain.map(p => (db.missCount[p.id] || 0) + 1);
+      const total = weights.reduce((a,b)=>a+b, 0);
+      let r = Math.random() * total, idx = 0;
+      while(r >= weights[idx]){ r -= weights[idx]; idx++; }
+      picked.push(remain[idx]);
+      remain.splice(idx, 1); // 同じ問題は1回のセットで重複させない
+    }
+    return picked;
+  }
+
+  // 通常：シャッフルして先頭から
   const arr = [...pool];
   for(let i = arr.length-1; i > 0; i--){
     const j = Math.floor(Math.random()*(i+1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
-  const n = db.settings.count;
-  return (n === 0 || n >= arr.length) ? arr : arr.slice(0, n);
+  return arr.slice(0, take);
 }
 
 function startGame(){
@@ -822,7 +945,7 @@ function beginGame(sid){
   const qs = pickProblems();
   if(qs.length === 0){ alert("問題がありません。「もんだいをつくる」から追加してください。"); goHome(); return; }
   game = { qs, qi:0, score:0, miss:0, clear:0, matcher:null, remain:0, locked:false, sid,
-           hits:0, combo:0, maxCombo:0, activeMs:0, qStart:0 };
+           hits:0, combo:0, maxCombo:0, activeMs:0, qStart:0, qMissed:false };
   show("scr-game");
   buildKeyboard();
   buildGuideKb();
@@ -846,6 +969,7 @@ function nextQuestion(){
   game.matcher = (db.settings.mode === "roma") ? new RomaMatcher(q.kana) : new KanaMatcher(q.kana);
   game.locked = false;
   game.qStart = Date.now();
+  game.qMissed = false;
   document.getElementById("game-progress").textContent = (game.qi+1) + " / " + game.qs.length;
   document.getElementById("flash").classList.add("hidden");
   renderQuestion();
@@ -882,12 +1006,19 @@ function updateWordView(){
 
   const roma = document.getElementById("q-roma");
   if(db.settings.mode === "roma"){
-    if(db.settings.guide === "show"){
+    if(db.settings.romaPair === "on"){
+      // かな1文字ずつに、その下へローマ字を対応表示（み/mi か/ka …）
+      roma.innerHTML = m.pairs().map(p =>
+        '<span class="pair pair-' + p.state + '"><span class="pk">' + p.kana +
+        '</span><span class="pr">' + p.roma + "</span></span>").join("");
+      document.getElementById("q-hint").textContent = "";
+    }else if(db.settings.guide === "show"){
       roma.innerHTML = '<span class="done">' + m.typed + '</span><span class="rest">' + m.guideRest() + "</span>";
+      document.getElementById("q-hint").textContent = "";
     }else{
       roma.innerHTML = ""; // おてほんを かくす（慣れてきた生徒用）
+      document.getElementById("q-hint").textContent = "";
     }
-    document.getElementById("q-hint").textContent = "";
   }else{
     roma.innerHTML = "";
     document.getElementById("q-hint").textContent = kanaHint(m);
@@ -910,6 +1041,7 @@ function kanaHint(m){
 
 function handleInput(ch){
   if(!game || game.locked || !game.matcher || game.matcher.done()) return;
+  const beforeDone = game.matcher.doneKanaLen();
   const ok = game.matcher.press(ch);
   if(ok){
     game.score += 10;
@@ -917,6 +1049,10 @@ function handleInput(ch){
     game.combo++;
     if(game.combo > game.maxCombo) game.maxCombo = game.combo;
     soundKey();
+    // かんたんモード：かなが1文字進むたびに「◯」を出して達成感を細かく
+    if(db.settings.easy === "on" && game.matcher.doneKanaLen() > beforeDone && !game.matcher.done()){
+      flashMini();
+    }
     if(game.combo % 5 === 0){ // 5コンボごとにボーナス
       game.score += 20;
       soundCombo();
@@ -925,6 +1061,7 @@ function handleInput(ch){
   }else{
     game.combo = 0;
     game.miss++;
+    game.qMissed = true; // この問題でミスした（苦手復習のカウント用）
     game.score = Math.max(0, game.score - 5);
     if(db.settings.buzz === "on") soundBuzz();
     shakeCard(); // 音がなくても目でわかるように揺らして赤枠を出す
@@ -932,6 +1069,9 @@ function handleInput(ch){
   updateComboView();
   updateWordView();
   if(game.matcher.done()){
+    // 苦手復習：この問題でミスがあれば、まちがえ回数を1増やす（次回出やすくなる）
+    const qid = game.qs[game.qi].id;
+    if(game.qMissed) db.missCount[qid] = (db.missCount[qid] || 0) + 1;
     game.clear++;
     game.score += 50;
     game.activeMs += Date.now() - game.qStart; // この問題にかかった時間を積算
@@ -941,6 +1081,11 @@ function handleInput(ch){
     flash("せいかい！ 🎉", false);
     setTimeout(advance, 900);
   }
+}
+
+function flashMini(){ // かんたんモードの1文字クリア演出（小さな○）
+  const el = document.getElementById("mini-ok");
+  el.classList.remove("show"); void el.offsetWidth; el.classList.add("show");
 }
 
 function shakeCard(){
@@ -974,7 +1119,10 @@ function endGame(){
     clear: game.clear, total: game.qs.length, miss: game.miss, mode: db.settings.mode,
     kpm, accuracy, maxCombo: game.maxCombo});
   if(db.records.length > 1000) db.records = db.records.slice(-1000);
+  // がんばりシール：1回やりきるごとに1枚。5枚たまるとごほうび
+  db.stickers = (db.stickers || 0) + 1;
   save();
+  renderStickers();
   document.getElementById("result-score").textContent = game.score;
   document.getElementById("result-clear").textContent = game.clear + " / " + game.qs.length;
   document.getElementById("result-miss").textContent = game.miss;
@@ -985,6 +1133,28 @@ function endGame(){
   const stars = rate >= 1 ? 3 : rate >= 0.6 ? 2 : 1;
   document.getElementById("result-stars").textContent = "⭐".repeat(stars) + "☆".repeat(3-stars);
   show("scr-result");
+}
+
+function renderStickers(){
+  const box = document.getElementById("result-stickers");
+  if(!box) return;
+  const GOAL = 5;                       // 5枚でごほうび
+  const cur = db.stickers % GOAL;       // 今たまっている数（0〜4、ちょうど達成時は0）
+  const justReached = db.stickers > 0 && cur === 0;
+  let s = "";
+  for(let i=0; i<GOAL; i++){
+    s += (i < (justReached ? GOAL : cur)) ? "⭐" : "⬜";
+  }
+  const msg = document.getElementById("result-sticker-msg");
+  box.textContent = s;
+  if(justReached){
+    msg.textContent = "🎁 シール ５まい たまった！ よくがんばったね！";
+    msg.style.color = "var(--ng)";
+    soundFanfare();
+  }else{
+    msg.textContent = "あと " + (GOAL - cur) + " かいで ごほうび！";
+    msg.style.color = "var(--sub)";
+  }
 }
 
 /* ---- タイマー ---- */
@@ -1777,8 +1947,16 @@ function importData(ev){
   ev.target.value = "";
 }
 
+/* ===== 見やすさ（文字サイズ・配色）を body に反映 ===== */
+function applyAppearance(){
+  document.body.classList.remove("tsize-normal","tsize-large","theme-light","theme-cream","theme-hc");
+  document.body.classList.add("tsize-" + (db.settings.textSize || "normal"));
+  document.body.classList.add("theme-" + (db.settings.theme || "light"));
+}
+
 /* ===== 起動 ===== */
 load();
+applyAppearance();
 </script>
 </body>
 </html>
