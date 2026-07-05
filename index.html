@@ -133,13 +133,13 @@
     font-family:inherit; font-size:1.2rem; font-weight:700; color:var(--ink); cursor:pointer;
   }
   .key:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(31,58,95,.2);}
-  .kb-kana{display:flex; gap:5px; justify-content:center; flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px;}
-  .kana-col{display:flex; flex-direction:column; gap:5px;}
-  .key.kana{width:52px; max-width:none; height:50px; font-size:1.25rem; flex:none;}
+  .kb-kana{display:flex; gap:10px; justify-content:center; flex-wrap:nowrap; overflow-x:auto; padding-bottom:6px;}
+  .kana-col{display:flex; flex-direction:column; gap:10px;}
+  .key.kana{width:66px; max-width:none; height:64px; font-size:1.6rem; flex:none;}
   .key.mod{background:var(--accent);}
   .key.ghost{visibility:hidden;}
-  .kb-kana-bottom{display:flex; gap:8px; justify-content:center; margin-top:8px;}
-  .kb-kana-bottom .key{width:76px; flex:none;}
+  .kb-kana-bottom{display:flex; gap:10px; justify-content:center; margin-top:10px;}
+  .kb-kana-bottom .key{width:96px; height:64px; font-size:1.4rem; flex:none;}
 
   /* ===== フリックキーボード ===== */
   .kb-flick{display:grid; grid-template-columns:repeat(3, 92px); gap:12px; justify-content:center; margin-top:16px;}
@@ -255,12 +255,12 @@
   .note{color:var(--sub); font-size:.85rem;}
   .flex-gap{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
 
-  @media (max-width:600px){
+  @media (max-width:500px){
     .q-word{font-size:2rem;}
     .q-image{height:130px;}
     .q-image .emoji{font-size:90px;}
     .key{height:48px; font-size:1rem;}
-    .key.kana{width:40px; height:42px; font-size:1.05rem;}
+    .key.kana{width:46px; height:48px; font-size:1.2rem;}
   }
 </style>
 </head>
