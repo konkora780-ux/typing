@@ -99,6 +99,10 @@
   .back-bar{margin-bottom:10px;}
 
   /* ===== ゲーム ===== */
+  /* ゲーム画面は画面の高さいっぱいに縦並び。お題カードが伸縮してキーボードまで収める */
+  #scr-game.active{display:flex; flex-direction:column; height:100dvh; padding:8px 12px 10px; overflow:hidden;}
+  #scr-game .q-card{flex:1 1 auto; min-height:0; display:flex; flex-direction:column; justify-content:center;}
+  #scr-game .kb, #scr-game .guide-kb{flex:0 0 auto;}
   .game-top{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px; font-weight:700;}
   .game-top .score{color:var(--main); font-size:1.2rem;}
   .timer-wrap{height:16px; background:#D6E4F5; border-radius:99px; overflow:hidden; margin-bottom:12px;}
@@ -106,14 +110,14 @@
   .timer-bar.warn{background:var(--accent);}
   .timer-bar.danger{background:var(--ng);}
   .q-card{background:#fff; border-radius:var(--radius); box-shadow:0 4px 14px rgba(31,58,95,.1); padding:16px; text-align:center; position:relative;}
-  .q-image{height:180px; display:flex; align-items:center; justify-content:center; margin-bottom:8px;}
-  .q-image img{max-height:180px; max-width:100%; border-radius:14px;}
-  .q-image .emoji{font-size:120px; line-height:1;}
-  .q-word{font-size:2.6rem; font-weight:800; letter-spacing:.08em; margin:4px 0;}
+  .q-image{flex:1 1 auto; min-height:0; max-height:180px; display:flex; align-items:center; justify-content:center; margin-bottom:8px;}
+  .q-image img{max-height:100%; max-width:100%; border-radius:14px; object-fit:contain;}
+  .q-image .emoji{font-size:min(120px, 22vh); line-height:1;}
+  .q-word{font-size:clamp(1.8rem, 5vh, 2.6rem); font-weight:800; letter-spacing:.08em; margin:4px 0;}
   .q-word .done{color:var(--ok);}
   .q-word .now{color:var(--main); text-decoration:underline;}
   .q-word .rest{color:#C3D2E6;}
-  .q-roma{font-size:1.5rem; letter-spacing:.12em; font-weight:700; min-height:1.8rem; font-family:"Consolas","Menlo",monospace;}
+  .q-roma{font-size:clamp(1.1rem, 3vh, 1.5rem); letter-spacing:.12em; font-weight:700; min-height:1.4rem; font-family:"Consolas","Menlo",monospace;}
   .q-roma .done{color:var(--ok);}
   .q-roma .rest{color:#9FB4CE;}
   .q-hint{min-height:1.4rem; color:var(--ng); font-weight:700; font-size:1rem;}
@@ -124,22 +128,22 @@
   .hidden{display:none !important;}
 
   /* ===== キーボード ===== */
-  .kb{margin-top:14px;}
+  .kb{margin-top:10px;}
   .kb-roma{display:flex; flex-direction:column; gap:6px; align-items:center;}
   .kb-row{display:flex; gap:6px; justify-content:center; width:100%;}
   .key{
-    flex:1; max-width:64px; height:56px; border-radius:12px; border:none;
+    flex:1; max-width:64px; height:clamp(42px, 7vh, 56px); border-radius:12px; border:none;
     background:#fff; box-shadow:0 3px 0 rgba(31,58,95,.2);
     font-family:inherit; font-size:1.2rem; font-weight:700; color:var(--ink); cursor:pointer;
   }
   .key:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(31,58,95,.2);}
-  .kb-kana{display:flex; gap:10px; justify-content:center; flex-wrap:nowrap; overflow-x:auto; padding-bottom:6px;}
-  .kana-col{display:flex; flex-direction:column; gap:10px;}
-  .key.kana{width:66px; max-width:none; height:64px; font-size:1.6rem; flex:none;}
+  .kb-kana{display:flex; gap:clamp(5px, 1.2vh, 10px); justify-content:center; flex-wrap:nowrap; overflow-x:auto; padding-bottom:6px;}
+  .kana-col{display:flex; flex-direction:column; gap:clamp(5px, 1.2vh, 10px);}
+  .key.kana{width:clamp(48px, 8.5vh, 66px); max-width:none; height:clamp(46px, 8vh, 64px); font-size:clamp(1.2rem, 3.2vh, 1.6rem); flex:none;}
   .key.mod{background:var(--accent);}
   .key.ghost{visibility:hidden;}
-  .kb-kana-bottom{display:flex; gap:10px; justify-content:center; margin-top:10px;}
-  .kb-kana-bottom .key{width:96px; height:64px; font-size:1.4rem; flex:none;}
+  .kb-kana-bottom{display:flex; gap:10px; justify-content:center; margin-top:clamp(6px, 1.2vh, 10px);}
+  .kb-kana-bottom .key{width:96px; height:clamp(46px, 8vh, 64px); font-size:1.4rem; flex:none;}
 
   /* ===== フリックキーボード ===== */
   .kb-flick{display:grid; grid-template-columns:repeat(3, 92px); gap:12px; justify-content:center; margin-top:16px;}
@@ -256,11 +260,8 @@
   .flex-gap{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
 
   @media (max-width:500px){
-    .q-word{font-size:2rem;}
-    .q-image{height:130px;}
-    .q-image .emoji{font-size:90px;}
-    .key{height:48px; font-size:1rem;}
-    .key.kana{width:46px; height:48px; font-size:1.2rem;}
+    .q-image .emoji{font-size:min(90px, 18vh);}
+    .key{height:clamp(40px, 6.5vh, 48px); font-size:1rem;}
   }
 </style>
 </head>
