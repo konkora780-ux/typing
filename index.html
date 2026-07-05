@@ -175,6 +175,17 @@
   .record-item{display:flex; gap:12px; align-items:center; background:#F4F9FF; border-radius:14px; padding:10px 14px; font-size:.95rem;}
   .record-item .d{color:var(--sub); width:110px; flex:none;}
   .record-item .s{font-weight:800; color:var(--main);}
+  /* 記録グラフ */
+  .graph-box{background:#F4F9FF; border-radius:14px; padding:12px;}
+  .graph-legend{font-size:.85rem; color:var(--sub); margin-bottom:6px;}
+  .graph-legend .g-kpm{color:var(--main); font-weight:800;}
+  .graph-legend .g-acc{color:var(--ok); font-weight:800;}
+  /* 苦手キーの棒グラフ */
+  .km-row{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .km-char{width:44px; flex:none; font-size:1.3rem; font-weight:800; text-align:center;}
+  .km-bar-wrap{flex:1; background:#EAF1FA; border-radius:8px; overflow:hidden; height:22px;}
+  .km-bar{height:100%; background:var(--ng); border-radius:8px;}
+  .km-num{width:56px; flex:none; text-align:right; color:var(--sub); font-weight:700; font-size:.9rem;}
 
   /* ===== ひかるキーボード（パソコン用ガイド） ===== */
   .guide-kb{margin-top:16px; display:flex; flex-direction:column; gap:5px; align-items:center;}
@@ -348,6 +359,13 @@
       </div>
     </div>
     <div class="setting-row">
+      <div class="setting-label">がんばりシール（ごほうび）</div>
+      <div class="seg" id="seg-sticker">
+        <button data-v="off">なし</button>
+        <button data-v="on">あり</button>
+      </div>
+    </div>
+    <div class="setting-row">
       <div class="setting-label">もじの おおきさ</div>
       <div class="seg" id="seg-textsize">
         <button data-v="normal">ふつう</button>
@@ -508,7 +526,15 @@
       <button class="btn small red" onclick="clearRecords()">この生徒の記録を削除</button>
     </div>
     <div id="record-summary" style="font-weight:700; margin-bottom:10px;"></div>
+    <div id="record-graph" style="margin-bottom:14px;"></div>
     <div class="genre-list" id="record-list"></div>
+  </div>
+
+  <div class="card manage-section">
+    <h2>にがてな もじ（ミスの おおい じゅん）</h2>
+    <p class="note">生徒が打ちまちがえた文字を集計しています。指導の重点をしぼる参考にしてください。全員ぶんの合計です。</p>
+    <div id="keymiss-list"></div>
+    <button class="btn small red" style="margin-top:10px;" onclick="clearKeyMiss()">この集計をリセット</button>
   </div>
 
   <div class="card manage-section">
@@ -551,11 +577,12 @@ function defaultData(){
       {id:"p14",genreId:"g3",word:"ぎゅうにゅう",kana:"ぎゅうにゅう",emoji:"🥛",image:null}
     ],
     settings:{mode:"roma", count:5, timeLimit:0, genreId:"all", kanaKb:"table", buzz:"on", guide:"show", kbGuide:"show",
-              review:"on", romaPair:"off", textSize:"normal", theme:"light", easy:"off"},
+              review:"on", romaPair:"off", textSize:"normal", theme:"light", easy:"off", sticker:"off"},
     students:[],
     records:[],
     missCount:{},
-    stickers:0
+    stickers:0,
+    keyMiss:{}
   };
 }
 
@@ -575,10 +602,12 @@ function load(){
       if(!db.settings.textSize) db.settings.textSize = "normal";
       if(!db.settings.theme)  db.settings.theme = "light";
       if(!db.settings.easy)   db.settings.easy = "off";
+      if(!db.settings.sticker) db.settings.sticker = "off";
       if(!db.students) db.students = [];
       if(!db.records)  db.records = [];
       if(!db.missCount) db.missCount = {};   // 問題ID→まちがえた回数
       if(db.stickers == null) db.stickers = 0; // ためたシールの数
+      if(!db.keyMiss) db.keyMiss = {};       // 文字→まちがえた回数（苦手キー分析用）
       return;
     }
   }catch(e){}
@@ -711,6 +740,7 @@ class RomaMatcher {
     return n;
   }
   currentKanaLen(){ return this.done() ? 0 : this.units[this.ui].kana.length; }
+  currentTargetKana(){ return this.done() ? "" : this.units[this.ui].kana; }
   press(ch){ // ch: 小文字1字。戻り値 true=正解 / false=ミス
     if(this.done()) return false;
     const unit = this.units[this.ui];
@@ -812,6 +842,7 @@ class KanaMatcher {
   done(){ return this.pos >= this.target.length; }
   doneKanaLen(){ return this.pos; }
   currentKanaLen(){ return this.done() ? 0 : 1; }
+  currentTargetKana(){ return this.done() ? "" : this.target[this.pos]; }
   hint(){
     if(this.pending){
       const label = this.pending.mod === "小" ? "「小」" : "「" + this.pending.mod + "」";
@@ -851,6 +882,7 @@ function renderSettings(){
   setSeg("seg-review", db.settings.review, v => { db.settings.review = v; save(); });
   setSeg("seg-romapair", db.settings.romaPair, v => { db.settings.romaPair = v; save(); });
   setSeg("seg-easy", db.settings.easy, v => { db.settings.easy = v; save(); });
+  setSeg("seg-sticker", db.settings.sticker, v => { db.settings.sticker = v; save(); });
   setSeg("seg-textsize", db.settings.textSize, v => { db.settings.textSize = v; save(); applyAppearance(); });
   setSeg("seg-theme", db.settings.theme, v => { db.settings.theme = v; save(); applyAppearance(); });
   fillGenreSelect(document.getElementById("sel-genre-play"), true);
@@ -1062,6 +1094,9 @@ function handleInput(ch){
     game.combo = 0;
     game.miss++;
     game.qMissed = true; // この問題でミスした（苦手復習のカウント用）
+    // 苦手キー分析：打とうとしていた文字のまちがえ回数を1増やす
+    const target = game.matcher.currentTargetKana();
+    if(target) db.keyMiss[target] = (db.keyMiss[target] || 0) + 1;
     game.score = Math.max(0, game.score - 5);
     if(db.settings.buzz === "on") soundBuzz();
     shakeCard(); // 音がなくても目でわかるように揺らして赤枠を出す
@@ -1119,10 +1154,13 @@ function endGame(){
     clear: game.clear, total: game.qs.length, miss: game.miss, mode: db.settings.mode,
     kpm, accuracy, maxCombo: game.maxCombo});
   if(db.records.length > 1000) db.records = db.records.slice(-1000);
-  // がんばりシール：1回やりきるごとに1枚。5枚たまるとごほうび
-  db.stickers = (db.stickers || 0) + 1;
+  // がんばりシール：設定オンのときだけ1枚ためる
+  const showSticker = db.settings.sticker === "on";
+  if(showSticker) db.stickers = (db.stickers || 0) + 1;
   save();
-  renderStickers();
+  document.getElementById("result-stickers").style.display = showSticker ? "" : "none";
+  document.getElementById("result-sticker-msg").style.display = showSticker ? "" : "none";
+  if(showSticker) renderStickers();
   document.getElementById("result-score").textContent = game.score;
   document.getElementById("result-clear").textContent = game.clear + " / " + game.qs.length;
   document.getElementById("result-miss").textContent = game.miss;
@@ -1533,6 +1571,7 @@ function renderManage(){
   renderStudentList();
   fillRecordStudentSelect();
   renderRecords();
+  renderKeyMiss();
 }
 
 /* ---- 生徒の登録 ---- */
@@ -1589,11 +1628,14 @@ function renderRecords(){
   const list = recordsOfSelected().slice().reverse(); // 新しい順
   const sum = document.getElementById("record-summary");
   const box = document.getElementById("record-list");
+  const graph = document.getElementById("record-graph");
   if(list.length === 0){
     sum.textContent = "";
+    graph.innerHTML = "";
     box.innerHTML = '<p class="note">まだ記録がありません。</p>';
     return;
   }
+  renderRecordGraph(recordsOfSelected()); // 古い→新しいの順で渡す
   const best = Math.max(...list.map(r=>r.score));
   const withKpm = list.filter(r=>r.kpm != null);
   let extra = "";
@@ -1624,6 +1666,60 @@ function renderRecords(){
     box.appendChild(p);
   }
 }
+function renderRecordGraph(recordsOldToNew){
+  const graph = document.getElementById("record-graph");
+  const withKpm = recordsOldToNew.filter(r => r.kpm != null);
+  if(withKpm.length < 2){
+    graph.innerHTML = '<p class="note">グラフは、はやさ・正確率つきの記録が2回ぶん たまると表示されます。</p>';
+    return;
+  }
+  const pts = withKpm.slice(-20); // 直近20回
+  const W = 620, H = 160, PADL = 40, PADR = 40, PADT = 14, PADB = 24;
+  const n = pts.length;
+  const x = i => PADL + (W - PADL - PADR) * (n === 1 ? 0 : i/(n-1));
+  const maxKpm = Math.max(10, ...pts.map(p=>p.kpm));
+  const yKpm = v => PADT + (H - PADT - PADB) * (1 - v/maxKpm);       // 速さ（左軸・青）
+  const yAcc = v => PADT + (H - PADT - PADB) * (1 - v/100);          // 正確率（右軸・緑 0〜100%）
+  const line = (fy, key) => pts.map((p,i)=> (i?"L":"M") + x(i).toFixed(1) + " " + fy(p[key]).toFixed(1)).join(" ");
+  const dots = (fy, key, color) => pts.map((p,i)=>
+    '<circle cx="'+x(i).toFixed(1)+'" cy="'+fy(p[key]).toFixed(1)+'" r="3" fill="'+color+'"/>').join("");
+  const svg =
+    '<div class="graph-box"><div class="graph-legend">'+
+    '<span class="g-kpm">● はやさ（打/分）</span>　<span class="g-acc">● 正確率（％）</span>'+
+    '　※よこじく＝ふるい→あたらしい（さいきん'+n+'かい）</div>'+
+    '<svg viewBox="0 0 '+W+' '+H+'" width="100%" preserveAspectRatio="xMidYMid meet">'+
+    '<line x1="'+PADL+'" y1="'+(H-PADB)+'" x2="'+(W-PADR)+'" y2="'+(H-PADB)+'" stroke="#C3D2E6"/>'+
+    '<path d="'+line(yKpm,"kpm")+'" fill="none" stroke="#2E9BFF" stroke-width="2.5"/>'+
+    '<path d="'+line(yAcc,"accuracy")+'" fill="none" stroke="#3ECF8E" stroke-width="2.5" stroke-dasharray="5 3"/>'+
+    dots(yKpm,"kpm","#2E9BFF") + dots(yAcc,"accuracy","#3ECF8E") +
+    '<text x="'+PADL+'" y="10" font-size="10" fill="#2E9BFF">はやさ さいだい '+maxKpm+'</text>'+
+    '<text x="'+(W-PADR)+'" y="10" font-size="10" fill="#3ECF8E" text-anchor="end">正確率 100%</text>'+
+    '</svg></div>';
+  graph.innerHTML = svg;
+}
+
+/* ---- 苦手キー分析 ---- */
+function renderKeyMiss(){
+  const box = document.getElementById("keymiss-list");
+  if(!box) return;
+  const entries = Object.entries(db.keyMiss || {}).sort((a,b)=>b[1]-a[1]).slice(0, 12);
+  if(entries.length === 0){
+    box.innerHTML = '<p class="note">まだ集計がありません。れんしゅうすると たまります。</p>';
+    return;
+  }
+  const max = entries[0][1];
+  box.innerHTML = entries.map(([ch,cnt])=>
+    '<div class="km-row"><div class="km-char">'+ch+'</div>'+
+    '<div class="km-bar-wrap"><div class="km-bar" style="width:'+Math.round(cnt/max*100)+'%"></div></div>'+
+    '<div class="km-num">'+cnt+'かい</div></div>').join("");
+}
+function clearKeyMiss(){
+  if(Object.keys(db.keyMiss||{}).length === 0){ alert("集計はまだありません。"); return; }
+  if(!confirm("にがてな文字の集計をリセットします。よろしいですか？")) return;
+  db.keyMiss = {};
+  save(); renderKeyMiss();
+}
+
 function clearRecords(){
   const list = recordsOfSelected();
   if(list.length === 0){ alert("削除する記録がありません。"); return; }
