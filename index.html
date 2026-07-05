@@ -144,6 +144,9 @@
   .key.ghost{visibility:hidden;}
   .kb-kana-bottom{display:flex; gap:10px; justify-content:center; margin-top:clamp(6px, 1.2vh, 10px);}
   .kb-kana-bottom .key{width:96px; height:clamp(46px, 8vh, 64px); font-size:1.4rem; flex:none;}
+  /* iPad配列：修飾キー（小゛゜）は押すたびに切り替わる。目立たせる */
+  .kb-ipad .cycle-mod{background:var(--accent); color:var(--ink); font-size:1.1rem; line-height:1.1;}
+  .kb-ipad .cycle-mod::after{content:attr(data-showing); display:block; font-size:.7rem; color:var(--ink); font-weight:800;}
 
   /* ===== フリックキーボード ===== */
   .kb-flick{display:grid; grid-template-columns:repeat(3, 92px); gap:12px; justify-content:center; margin-top:16px;}
@@ -286,9 +289,11 @@
   <div class="card">
     <div class="setting-row">
       <div class="setting-label">にゅうりょくの ほうほう</div>
-      <div class="seg" id="seg-mode">
-        <button data-v="roma">ローマじ</button>
-        <button data-v="kana">ひらがな</button>
+      <div class="seg" id="seg-input">
+        <button data-v="pc-roma">パソコン・ローマじ</button>
+        <button data-v="pc-kana">パソコン・ひらがな</button>
+        <button data-v="tab-roma">タブレット・ローマじ</button>
+        <button data-v="tab-kana">タブレット・ひらがな</button>
       </div>
     </div>
     <div class="setting-row">
@@ -332,8 +337,9 @@
       </div>
     </div>
     <div class="setting-row">
-      <div class="setting-label">ひらがなの キーボード</div>
+      <div class="setting-label">タブレット・ひらがなの キーボード</div>
       <div class="seg" id="seg-kanakb">
+        <button data-v="ipad">iPadはいれつ</button>
         <button data-v="table">50おんひょう</button>
         <button data-v="flick">フリック</button>
       </div>
@@ -577,7 +583,7 @@ function defaultData(){
       {id:"p13",genreId:"g3",word:"けーき",kana:"けーき",emoji:"🍰",image:null},
       {id:"p14",genreId:"g3",word:"ぎゅうにゅう",kana:"ぎゅうにゅう",emoji:"🥛",image:null}
     ],
-    settings:{mode:"roma", count:5, timeLimit:0, genreId:"all", kanaKb:"table", buzz:"on", guide:"show", kbGuide:"show",
+    settings:{mode:"roma", layout:"pc", count:5, timeLimit:0, genreId:"all", kanaKb:"ipad", buzz:"on", guide:"show", kbGuide:"show",
               review:"on", romaPair:"off", textSize:"normal", theme:"light", easy:"off", sticker:"off"},
     students:[],
     records:[],
@@ -594,6 +600,7 @@ function load(){
     if(raw){
       db = JSON.parse(raw);
       if(!db.settings) db.settings = defaultData().settings;
+      if(!db.settings.layout) db.settings.layout = "pc"; // キーボード配列（旧データはパソコン扱い）
       if(!db.settings.kanaKb) db.settings.kanaKb = "table"; // 旧データへの補完
       if(!db.settings.buzz)   db.settings.buzz = "on";
       if(!db.settings.guide)  db.settings.guide = "show";
@@ -873,7 +880,14 @@ class KanaMatcher {
    設定画面
 ========================================================= */
 function renderSettings(){
-  setSeg("seg-mode",  db.settings.mode,  v => { db.settings.mode = v; save(); });
+  const curInput = (db.settings.layout === "tablet" ? "tab" : "pc") + "-" + db.settings.mode;
+  setSeg("seg-input", curInput, v => {
+    // 例: "tab-kana" → layout:"tablet", mode:"kana"
+    const [lay, md] = v.split("-");
+    db.settings.layout = (lay === "tab") ? "tablet" : "pc";
+    db.settings.mode = md;
+    save();
+  });
   setSeg("seg-count", String(db.settings.count), v => { db.settings.count = Number(v); save(); });
   setSeg("seg-time",  String(db.settings.timeLimit), v => { db.settings.timeLimit = Number(v); save(); });
   setSeg("seg-kanakb", db.settings.kanaKb, v => { db.settings.kanaKb = v; save(); });
@@ -980,6 +994,8 @@ function beginGame(sid){
   game = { qs, qi:0, score:0, miss:0, clear:0, matcher:null, remain:0, locked:false, sid,
            hits:0, combo:0, maxCombo:0, activeMs:0, qStart:0, qMissed:false };
   show("scr-game");
+  // 配列設定にあわせて画面キーボードの表示を決める（タブレット=出す／パソコン=隠す）
+  kbVisible = (db.settings.layout === "tablet");
   buildKeyboard();
   buildGuideKb();
   applyKbVisibility();
@@ -1063,10 +1079,14 @@ function updateWordView(){
 function kanaHint(m){
   if(!m.pending) return "";
   const mod = m.pending.mod;
-  if(db.settings.kanaKb === "flick" && kbVisible){
+  if(db.settings.layout === "tablet" && db.settings.kanaKb === "flick" && kbVisible){
     if(mod === "゛") return "「゛」の キーを タップしてね";
     if(mod === "゜") return "「゛」の キーを ひだりに フリックしてね（゜）";
     return "「゛」の キーを うえに フリックしてね（小）";
+  }
+  if(db.settings.layout === "tablet" && db.settings.kanaKb === "ipad" && kbVisible){
+    const name = mod === "小" ? "ちいさい じ（小）" : (mod === "゛" ? "てんてん（゛）" : "まる（゜）");
+    return "「小゛゜」の キーを おして " + name + " に あわせてね";
   }
   const label = mod === "小" ? "「小」" : "「" + mod + "」";
   return label + " の ボタンを おしてね";
@@ -1375,6 +1395,7 @@ function buildKeyboard(){
   kb.innerHTML = "";
   if(db.settings.mode === "roma"){
     kb.className = "kb kb-roma";
+    // パソコン配列はふつうのQWERTY、タブレット配列も文字キーは同じQWERTYで表示
     const rows = ["qwertyuiop","asdfghjkl","zxcvbnm-"];
     rows.forEach(r=>{
       const row = document.createElement("div"); row.className = "kb-row";
@@ -1388,9 +1409,79 @@ function buildKeyboard(){
     });
   }else{
     kb.className = "kb";
-    if(db.settings.kanaKb === "flick"){ buildFlickKeyboard(kb); return; }
-    buildTableKeyboard(kb);
+    // タブレット・ひらがな：iPad配列 / 50音表 / フリック から選ぶ
+    // パソコン・ひらがな：物理キーボードで打つので画面キーボードは50音表を補助表示
+    if(db.settings.layout === "tablet"){
+      if(db.settings.kanaKb === "flick"){ buildFlickKeyboard(kb); return; }
+      if(db.settings.kanaKb === "ipad"){ buildIpadKanaKeyboard(kb); return; }
+      buildTableKeyboard(kb);
+    }else{
+      buildTableKeyboard(kb); // パソコン・ひらがなの画面補助は50音表
+    }
   }
+}
+
+/* ---- iPad配列 かなキーボード ----
+   iPad標準「日本語かな（あ行が右）」と同じ。右端が あ行、左へ か・さ…と進み、
+   最左列に「ー」と、押すたびに 小→゛→゜→戻る と切り替わる修飾キーを置く。 */
+function buildIpadKanaKeyboard(kb){
+  const grid = document.createElement("div"); grid.className = "kb-kana kb-ipad";
+  // 右→左の順に列を並べる（DOMは左から追加するので、左端の修飾列を先頭にする）
+  const cols = [
+    ["ー","small-mod","","",""],  // 最左列：ー と 小点丸キー
+    ["わ","を","ん","",""],
+    ["ら","り","る","れ","ろ"],
+    ["や","","ゆ","","よ"],
+    ["ま","み","む","め","も"],
+    ["は","ひ","ふ","へ","ほ"],
+    ["な","に","ぬ","ね","の"],
+    ["た","ち","つ","て","と"],
+    ["さ","し","す","せ","そ"],
+    ["か","き","く","け","こ"],
+    ["あ","い","う","え","お"]   // 右端：あ行
+  ];
+  cols.forEach(col=>{
+    const c = document.createElement("div"); c.className = "kana-col";
+    col.forEach(ch=>{
+      const b = document.createElement("button");
+      if(ch === "small-mod"){
+        b.className = "key kana mod cycle-mod";
+        b.textContent = "小゛゜";
+        b.dataset.cycle = "0";
+        b.onclick = ()=>handleCycleMod(b);
+      }else if(ch === ""){
+        b.className = "key kana ghost"; b.textContent = "・";
+      }else{
+        b.className = "key kana"; b.textContent = ch;
+        b.onclick = ()=>handleInput(ch);
+      }
+      c.appendChild(b);
+    });
+    grid.appendChild(c);
+  });
+  kb.appendChild(grid);
+}
+
+/* iPad配列の「小゛゜」キー：押すたびに 小→゛→゜→戻る と切り替え。
+   目標の文字に合う修飾になったら正解として確定する（合わない切り替えはミスにしない）。 */
+const CYCLE_MODS = ["小","゛","゜"];
+function handleCycleMod(btn){
+  if(!game || game.locked || !game.matcher || game.matcher.done()) return;
+  const m = game.matcher;
+  // まだ土台のかなが押されていない（pendingが無い）ときは、押しても何もしない（ミスにしない）
+  if(!m.pending){ btn.dataset.showing = "まず もじを おす"; return; }
+  // いま表示している修飾を1つ進める
+  let idx = Number(btn.dataset.cycle || "0");
+  const cur = CYCLE_MODS[idx % CYCLE_MODS.length];
+  btn.dataset.cycle = String((idx + 1) % (CYCLE_MODS.length + 1)); // +1で「戻る（無し）」も含む
+  btn.dataset.showing = cur; // いま何になっているか表示
+  // いまの修飾が目標に合えば確定（handleInput経由で正解処理・得点・コンボ）
+  if(m.pending.mod === cur){
+    btn.dataset.cycle = "0";
+    btn.dataset.showing = "";
+    handleInput(cur);
+  }
+  // 合わなければ何もしない（次に押すと次の修飾になる）＝何度押してもOK
 }
 
 function buildTableKeyboard(kb){
