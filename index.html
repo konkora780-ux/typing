@@ -1480,10 +1480,9 @@ function buildKeyboard(){
    最左列に「ー」と、押すたびに 小→゛→゜→戻る と切り替わる修飾キーを置く。 */
 function buildIpadKanaKeyboard(kb){
   const grid = document.createElement("div"); grid.className = "kb-kana kb-ipad";
-  // 右→左の順に列を並べる（DOMは左から追加するので、左端の修飾列を先頭にする）
+  // 右→左の順に列を並べる（DOMは左から追加するので、左端の列を先頭にする）
   const cols = [
-    ["ー","small-mod","","",""],  // 最左列：ー と 小点丸キー
-    ["わ","を","ん","",""],
+    ["わ","を","ん","ー","small-mod"],  // 最左列：わ・を・ん・ー・小゛゜（iPad実機と同じ）
     ["ら","り","る","れ","ろ"],
     ["や","","ゆ","","よ"],
     ["ま","み","む","め","も"],
