@@ -97,6 +97,12 @@
     max-width:100%;
   }
   .back-bar{margin-bottom:10px;}
+  /* ジャンルの複数選択チェック */
+  .genre-check-list{display:flex; flex-wrap:wrap; gap:10px;}
+  .genre-check{display:flex; align-items:center; gap:8px; cursor:pointer;
+    border:3px solid #D6E4F5; border-radius:16px; padding:10px 16px; font-weight:700; font-size:1.05rem;}
+  .genre-check.on{border-color:var(--main); background:#EAF6FF;}
+  .genre-check input{width:20px; height:20px; accent-color:var(--main);}
 
   /* ===== ゲーム ===== */
   /* ゲーム画面は画面の高さいっぱいに縦並び。お題カードが伸縮してキーボードまで収める */
@@ -388,8 +394,12 @@
       </div>
     </div>
     <div class="setting-row">
-      <div class="setting-label">ジャンル</div>
-      <select id="sel-genre-play" onchange="onGenreChange()"></select>
+      <div class="setting-label">ジャンル（いくつでも えらべます）</div>
+      <div class="flex-gap" style="margin-bottom:8px;">
+        <button class="btn small gray" onclick="selectAllGenres(true)">ぜんぶ えらぶ</button>
+        <button class="btn small gray" onclick="selectAllGenres(false)">ぜんぶ はずす</button>
+      </div>
+      <div class="genre-check-list" id="genre-check-list"></div>
     </div>
   </div>
 </div>
@@ -583,7 +593,7 @@ function defaultData(){
       {id:"p13",genreId:"g3",word:"けーき",kana:"けーき",emoji:"🍰",image:null},
       {id:"p14",genreId:"g3",word:"ぎゅうにゅう",kana:"ぎゅうにゅう",emoji:"🥛",image:null}
     ],
-    settings:{mode:"roma", layout:"pc", count:5, timeLimit:0, genreId:"all", kanaKb:"ipad", buzz:"on", guide:"show", kbGuide:"show",
+    settings:{mode:"roma", layout:"pc", count:5, timeLimit:0, genreIds:[], kanaKb:"ipad", buzz:"on", guide:"show", kbGuide:"show",
               review:"on", romaPair:"off", textSize:"normal", theme:"light", easy:"off", sticker:"off"},
     students:[],
     records:[],
@@ -611,6 +621,11 @@ function load(){
       if(!db.settings.theme)  db.settings.theme = "light";
       if(!db.settings.easy)   db.settings.easy = "off";
       if(!db.settings.sticker) db.settings.sticker = "off";
+      if(!db.settings.genreIds){
+        // 旧データ（genreId：単一）から複数選択へ移行。"all"や未設定は空配列（＝すべて）
+        db.settings.genreIds = (db.settings.genreId && db.settings.genreId !== "all")
+          ? [db.settings.genreId] : [];
+      }
       if(!db.students) db.students = [];
       if(!db.records)  db.records = [];
       if(!db.missCount) db.missCount = {};   // 問題ID→まちがえた回数
@@ -900,8 +915,44 @@ function renderSettings(){
   setSeg("seg-sticker", db.settings.sticker, v => { db.settings.sticker = v; save(); });
   setSeg("seg-textsize", db.settings.textSize, v => { db.settings.textSize = v; save(); applyAppearance(); });
   setSeg("seg-theme", db.settings.theme, v => { db.settings.theme = v; save(); applyAppearance(); });
-  fillGenreSelect(document.getElementById("sel-genre-play"), true);
-  document.getElementById("sel-genre-play").value = db.settings.genreId;
+  renderGenreChecks();
+}
+function renderGenreChecks(){
+  const box = document.getElementById("genre-check-list");
+  if(!box) return;
+  box.innerHTML = "";
+  if(db.genres.length === 0){
+    box.innerHTML = '<p class="note">ジャンルがありません。「もんだいをつくる」から追加してください。</p>';
+    return;
+  }
+  const sel = db.settings.genreIds || [];
+  db.genres.forEach(g=>{
+    const n = db.problems.filter(p=>p.genreId===g.id).length;
+    const checked = sel.length === 0 || sel.includes(g.id); // 空配列は「すべて」なので全部チェック表示
+    const label = document.createElement("label");
+    label.className = "genre-check" + (checked ? " on" : "");
+    label.innerHTML = '<input type="checkbox"' + (checked ? " checked" : "") + '> ' +
+      g.name + ' <span class="note">（' + n + '問）</span>';
+    label.querySelector("input").onchange = (e)=>toggleGenre(g.id, e.target.checked);
+    box.appendChild(label);
+  });
+}
+function toggleGenre(id, on){
+  let sel = db.settings.genreIds || [];
+  // 空配列＝すべて選択中。初めて操作したら、いったん全ジャンルを入れてから外す/入れる
+  if(sel.length === 0) sel = db.genres.map(g=>g.id);
+  if(on){ if(!sel.includes(id)) sel.push(id); }
+  else{ sel = sel.filter(x=>x!==id); }
+  // すべて選ばれた状態は「空配列（すべて）」に正規化しておく
+  if(sel.length === db.genres.length) sel = [];
+  db.settings.genreIds = sel;
+  save();
+  renderGenreChecks();
+}
+function selectAllGenres(all){
+  db.settings.genreIds = all ? [] : ["__none__"]; // allなら空（すべて）、はずすなら該当なし印
+  save();
+  renderGenreChecks();
 }
 function setSeg(id, current, onPick){
   const seg = document.getElementById(id);
@@ -909,10 +960,6 @@ function setSeg(id, current, onPick){
     b.classList.toggle("on", b.dataset.v === current);
     b.onclick = () => { onPick(b.dataset.v); setSeg(id, b.dataset.v, onPick); };
   });
-}
-function onGenreChange(){
-  db.settings.genreId = document.getElementById("sel-genre-play").value;
-  save();
 }
 function fillGenreSelect(sel, withAll){
   sel.innerHTML = "";
@@ -934,9 +981,10 @@ let timerId = null;
 
 function pickProblems(){
   let pool = db.problems;
-  if(db.settings.genreId !== "all"){
-    pool = pool.filter(p => p.genreId === db.settings.genreId);
-    if(pool.length === 0) pool = db.problems; // ジャンルが空なら全体から
+  const sel = db.settings.genreIds || [];
+  if(sel.length > 0){
+    // 選ばれたジャンルだけに絞り込む（該当が無ければ空のまま＝開始時に案内）
+    pool = pool.filter(p => sel.includes(p.genreId));
   }
   const n = db.settings.count;
   const take = (n === 0 || n >= pool.length) ? pool.length : n;
@@ -990,7 +1038,13 @@ function renderStudentPick(){
 
 function beginGame(sid){
   const qs = pickProblems();
-  if(qs.length === 0){ alert("問題がありません。「もんだいをつくる」から追加してください。"); goHome(); return; }
+  if(qs.length === 0){
+    const sel = db.settings.genreIds || [];
+    const msg = sel.length > 0
+      ? "えらんだ ジャンルに もんだいが ありません。せっていで ジャンルを えらびなおすか、もんだいを ついかしてください。"
+      : "問題がありません。「もんだいをつくる」から追加してください。";
+    alert(msg); goHome(); return;
+  }
   game = { qs, qi:0, score:0, miss:0, clear:0, matcher:null, remain:0, locked:false, sid,
            hits:0, combo:0, maxCombo:0, activeMs:0, qStart:0, qMissed:false };
   show("scr-game");
@@ -1967,7 +2021,7 @@ function delGenre(id, name, count){
   if(!confirm(msg)) return;
   db.genres = db.genres.filter(g=>g.id!==id);
   db.problems = db.problems.filter(p=>p.genreId!==id);
-  if(db.settings.genreId === id) db.settings.genreId = "all";
+  if(db.settings.genreIds) db.settings.genreIds = db.settings.genreIds.filter(x=>x!==id);
   save(); renderManage();
 }
 
